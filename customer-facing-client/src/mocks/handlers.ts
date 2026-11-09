@@ -5,58 +5,114 @@ export const handlers = [
   http.get(`${base}/tracking/BLJ-good-code`, () => {
     return HttpResponse.json({
       details: {
-        billNumber: 'goodcode',
+        trackingNumber: 'BLJ-good-code',
         contOrSeal: 'abcd1234',
         pol: 'SomeRandomPort of Vietnam',
-        pod: 'SomeRandomPort of Singapore'
+        pod: 'SomeRandomPort of Singapore',
+        physicalDetails: {
+          pieces: 12,
+          weightKg: 840.5,
+          dimensionsM: { length: 2.4, width: 1.2, height: 1.5 },
+        },
       },
       statuses: [
         {
-          time: '2026-10-15T09:11:00Z',
-          title: 'Package resigered',
-          warnings: [],
-        },
-        {
-          time: '2026-10-15T09:11:30Z',
-          title: 'Inland Trucking',
+          type: 'good',
+          status: 'Package registered',
+          occurringTime: '2026-10-15T09:11:00.000Z',
           location: 'Hanoi, VN',
           warnings: [],
         },
         {
-          time: '2026-10-15T09:14:00Z',
-          title: 'Customs Clearance',
+          type: 'good',
+          status: 'Inland Trucking',
+          occurringTime: '2026-10-15T09:11:30.000Z',
           location: 'Hanoi, VN',
           warnings: [],
         },
         {
-          time: '2026-10-20T09:15:00Z',
-          title: 'Arrived at Port of Loading',
+          type: 'good',
+          status: 'Customs Clearance',
+          occurringTime: '2026-10-15T09:14:00.000Z',
           location: 'Hanoi, VN',
           warnings: [],
         },
         {
-          time: '2026-10-21T14:30:00Z',
-          title: 'Left Port of Loading',
+          type: 'good',
+          status: 'Arrived at Port of Loading',
+          occurringTime: '2026-10-20T09:15:00.000Z',
           location: 'Hanoi, VN',
           warnings: [],
         },
         {
-          time: '2026-10-23T08:00:00Z',
-          title: 'Arrived at Port of Discharge',
+          type: 'good',
+          status: 'Left Port of Loading',
+          occurringTime: '2026-10-21T14:30:00.000Z',
+          location: 'Hanoi, VN',
+          warnings: [],
+        },
+        {
+          type: 'good',
+          status: 'Arrived at Port of Discharge',
+          occurringTime: '2026-10-23T08:00:00.000Z',
           location: 'Singapore, Singapore',
           warnings: [],
         },
         {
-          time: '2026-10-24T11:45:00Z',
-          title: 'Customs Clearance',
+          type: 'good',
+          status: 'Customs Clearance',
+          occurringTime: '2026-10-24T11:45:00.000Z',
           location: 'Singapore, Singapore',
           warnings: ['Delayed by customs inspection'],
         },
         {
-          time: '2026-10-24T11:45:00Z',
-          title: 'Inland Trucking to Place of Delivery',
+          type: 'good',
+          status: 'Inland Trucking to Place of Delivery',
+          occurringTime: '2026-10-24T11:45:00.000Z',
           location: 'Singapore, Singapore',
           warnings: [],
+        },
+      ]
+    })
+  }),
+
+  http.get(`${base}/tracking/BLJ-good-code-fail-shipment`, () => {
+    return HttpResponse.json({
+      details: {
+        trackingNumber: 'BLJ-good-code-fail-shipment',
+        pol: 'SomeRandomPort of Vietnam',
+        pod: 'SomeRandomPort of Singapore',
+        physicalDetails: {
+          pieces: 3,
+        },
+      },
+      statuses: [
+        {
+          type: 'good',
+          status: 'Package registered',
+          occurringTime: '2026-10-15T09:11:00.000Z',
+          location: 'Hanoi, VN',
+          warnings: [],
+        },
+        {
+          type: 'good',
+          status: 'Arrived at Port of Loading',
+          occurringTime: '2026-10-20T09:15:00.000Z',
+          location: 'Hanoi, VN',
+          warnings: [],
+        },
+        {
+          type: 'good',
+          status: 'Customs Clearance',
+          occurringTime: '2026-10-21T10:00:00.000Z',
+          location: 'Hanoi, VN',
+          warnings: ['Additional documents requested by customs'],
+        },
+        {
+          type: 'bad',
+          status: 'Rejected by customs: prohibited item',
+          occurringTime: '2026-10-22T08:00:00.000Z',
+          location: 'Hanoi, VN',
         },
       ]
     })
