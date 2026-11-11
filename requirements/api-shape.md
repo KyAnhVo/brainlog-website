@@ -12,67 +12,92 @@ type ApiError = {
 # Time
 
  Time is sent/received at UTC time, `RFC 3339` with `Z` suffix and millisecond precision, both in JSON body and query parameters.  The shape MUST BE `yyyy-mm-ddThh:mm:ss.xxxZ`. Even if `xxx == 000`, `000` must still be there.
+
+```typescript
+type Time = string;
+function isValidTime(s: string): boolean
+```
+
+`isValidTime` rejects anything not exactly of that shape, including out-of-range fields that `Date.parse` would roll over (e.g. `2026-02-30T00:00:00.000Z`).
 # Shape requirements
 
-## Tracking Metadata
-
-Each tracking is associated with its properties:
-- Tracking Number
-- (Optional) Cont / Seal
-- POL
-- POD
-- (Optional) Physical Details
-  - (Optional) pieces count
-  - (Optional) weight (kg)
-  - (Optional) dimensions (meter)
-
-## Additional information, Admin panel
-
-To show a tracking in the admin panel, we also the following:
-- Tracking creator
-- Tracking creation time
-- Tracking last status
-- (Optional) Name/email/phone/id of customer. Or a hyperlink to /customer/$customerId.
-
-## Good status
-
-Each good status must contain the following data:
-- Status (`str`)
-- Occurring time
-- Location
-- Warnings
-- Creation time (time the status is inputted into the system)
-- Name of creator of status
-
-Both creation time of name of status creator are admin panel only
-
-## Bad status
-
-A bad status is when bad things happen to a cargo. It could be that the cargo fell of a ship, customs do not approve of the item, etc.
-
-Each bad (error) status must contain the following data:
-- status  (`str`)
-- Occurring time
-- Location
-- Creation time
-- Name of creator of status
-
-Both creation time of name of status creator are admin panel only
-
-## Note on status
-
-The possible values of good status is 
+## Status (a cargo's status)
 
 ```ts
-const POSSIBLE_STATUSES = new Set([
-  'Tracking created', 'Ex-work', 'Customs clearance at POL', 'Arrived at POL', 'Left POL',
-  'Arrived at POT', 'Left POT', 'Arrived at POD', 'Left POD',
+type GoodStatus = {
+  statusType: 'good',
+  status: GoodStatusName,
+  warnings: string[],  // empty array when none, never omitted
+}
+
+type BadStatus = {
+  statusType: 'bad',
+  status: string,  // any nonempty string
+}
+
+type StatusCustomer = (GoodStatus | BadStatus) & {
+  // metadatas
+  id: string,
+
+  // occurence
+  occurringTime: Time,
+  location: string,
+};
+
+type Status = StatusCustomer & {
+	// status creator metadata
+	creatorId: string,
+	creationTime: Time,
+}
+```
+
+Clients must `switch`/`match` on `statusType`.
+
+The possible values of good status are
+
+```ts
+const GOOD_STATUS_NAMES = [
+  'Tracking created', 'Ex-work', 'Customs clearance at POL', 'Arrived at POL',
+  'Left POL', 'Arrived at POT', 'Left POT', 'Arrived at POD', 'Left POD',
   'Customs clearance at POD', 'Inland trucking to Place of Delivery',
-  'Arrived at Place of Delivery', 'Finished'
-])
+  'Arrived at Place of Delivery', 'Finished',
+] as const
+
+type GoodStatusName = typeof GOOD_STATUS_NAMES[number]
+
+const POSSIBLE_STATUSES: ReadonlySet<string> = new Set(GOOD_STATUS_NAMES)
 ```
 
 All tracking, at creation, will have at least `Tracking created` status.
+## Tracking Metadata
+
+```ts
+type TrackingBase = {
+	trackingNumber: string,
+	cont?: string,
+	seal?: string,
+	pol: string,
+	pod: string,
+	physicalDetails?: {
+		pcsCount?: number,
+		weightKg: number,
+		dimensions: {
+			lengthCm: number,
+			widthCm: number,
+			heightCm: number,
+		},
+	},
+}
+
+type Tracking = TrackingBase & {
+	creatorId: string,
+	creationTime: Time,
+	lastStatus: Status,
+	customerId?: string,
+}
+```
+
+## Note on status
 
 A tracking's last status is the status with the greatest occurring time; ties are broken by the greatest creation time.
 
@@ -98,25 +123,25 @@ Bad status can get any string, nonempty.
 	- Default: `""`
 	- Behavior: Refer to `pol`.
 - `creationTimeMin`
-	- Default: `Date(0)`, which is the lowest time bound
+	- Default: `1970-01-01T00:00:00.000Z`, which is the lowest time bound
 	- Behavior: all tracking with creation time t s.t. `t >= creationTimeMin`
 - `creationTimeMax`
-	- Default: `Date.now()`
+	- Default: current server time
 	- Behavior: Refer to `creationTimeMin`.
 - `lastStatusOccurringTimeMin`
-	- Default: `Date(0)`
+	- Default: `1970-01-01T00:00:00.000Z`
 	- Behavior: all tracking X where `X.lastStatus.occurringTime >= lastStatusOccurringTimeMin`
 - `lastStatusOccurringTimeMax`
-	- Default: `Date.now()`
+	- Default: current server time
 	- Behavior: Refer to `lastStatusOccurringTimeMin`
 - `sortBy`
 	- Default: `lastStatusOccurringTime`
 	- Possible values: `trackingNumber`, `pol`, `pod`, `lastStatusOccurringTime`, `creationTime`
-	- Behavior: Sort by that value. `lastStatusOccurringTime DESC`, then `lastStatus.creationTime DESC` (not in the list), then `creationTime DESC`, then `trackingNumber ASC` will always be the tiebreaker.
+	- Behavior: defines the `desc` ordering as the key list `sortBy DESC`, `lastStatusOccurringTime DESC`, `lastStatus.creationTime DESC` (not selectable via `sortBy`), `creationTime DESC`, `trackingNumber ASC`. Keys repeating an earlier key are skipped.
 - `sortDirection`
 	- Possible values: `asc`, `desc`
 	- Default: dependent on field: `pol`, `pod`, `trackingNumber` are `asc`, the rest are `desc`
-	- Behavior: dictates the sort direction
+	- Behavior: `desc` uses the ordering defined by `sortBy`; `asc` is its exact reverse (every key, including tiebreakers, flips direction).
 - `page`
 	- Default: `1`
 	- Possible values: integers
@@ -130,11 +155,11 @@ Bad status can get any string, nonempty.
 Response type is of shape
 
 ```ts
-type Response = {
+type TrackingListResponse = {
 	trackings: Tracking[],
-	page: int,
-	pageCount: int,
-	pageSize: int,
+	page: number,      // integer
+	pageCount: number, // integer
+	pageSize: number,  // integer
 }
 ```
 
@@ -144,24 +169,6 @@ type Response = {
 
 `pageSize` is the size of the page queried. Let `T = {tracking | tracking satisfies query}`. Then `(pageCount - 1) * pageSize < |T| <= pageCount * pageSize`.
 
-`trackings` field is of type `Tracking[]`.  Use the above query parameters for sorting. At the very least, `Tracking` objects are defined as following:
-
-```ts
-type Tracking = {
-	trackingNumber: string,
-	pol: string,
-	pod: string,
-	creationTime: string,
-	creator: string,
-	lastStatus: {
-		status: string,
-		type: "good" | "bad",
-	},
-	lastStatusOccurringTime: string,
-	lastStatusCreator: string,
-}
-```
-
 if there is nothing in `trackings`, it is still considered a good query and `trackings == []`.
 ## Response Type, bad query
 
@@ -170,78 +177,22 @@ if there is nothing in `trackings`, it is still considered a good query and `tra
 - `pageSize` not in the given list is bad query (400).
 - `page < 1` is a bad query (400).
 - `pageCount` < `page` is considered a bad query unless `pageCount == 0 && page == 1` (400).
-- Any time dependent values greater than `Date.now() + acceptedBuffer` is considered bad query (400).
+- Any time dependent values greater than current server time + `acceptedBuffer` is considered bad query (400), where `acceptedBuffer = 5 minutes` (clock skew allowance).
 - Any query `<queryField>=<queryValue` such that `queryValue not in queryField.domain()` is considered bad query (400).
 - Any data type mistake is a bad query (400).
 
-# `GET /api/tracking/:trackingId` (customer-facing)
+# `GET /api/tracking/:trackingNumber` (customer-facing)
 
 ### 200 OK
 
 ```ts
-{
-  details: {
-    trackingNumber: string,
-    contOrSeal?: string,
-    pol: string,                  // Port of Loading
-    pod: string,                  // Port of Discharge
-    physicalDetails?: {
-      pieces?: number,
-      weightKg?: number,
-      dimensionsM?: { length: number, width: number, height: number },
-    },
-  },
-  statuses: (GoodStatus | BadStatus)[],   // ordered by occurringTime, oldest first
-}
-
-type GoodStatus = {
-  type: 'good',
-  status: string,
-  occurringTime: string,
-  location: string,
-  warnings: string[],             // empty array when none, never omitted
-}
-
-type BadStatus = {
-  type: 'bad',
-  status: string,
-  occurringTime: string,
-  location: string,
+type TrackingResponse = {
+  details: TrackingBase,  // last status is the last entry of `statuses`
+  statuses: StatusCustomer[], // oldest first: occurringTime ASC, ties by creationTime ASC
 }
 ```
 
-`type` is the discriminator; both variants carry `status`, so clients must switch on `type`.
+# TODO (unspecified)
 
-Optional fields are omitted when absent, not sent as `null`.
-
-### Errors
-
-Any non-2xx response carries a JSON body:
-
-```ts
-{ errorCode: number, errorMsg: string }
-```
-
-e.g. `404 { errorCode: 404, errorMsg: 'No shipment found for this tracking code' }`.
-
-# `Get /api/admin/tracking/$trackingId` (admin panel)
-
-These exist on every status (good and bad) but must **not** be returned by the customer-facing endpoint:
-
-```ts
-{
-  creationTime: string,           // when the status was entered into the system
-  statusCreator: string,          // name of whoever entered it
-}
-```
-
-Tracking-level admin fields (creator, creation time, latest status, optional customer link) are listed in the requirements; their endpoint shape is not defined yet.
-
-## Mock tracking codes (customer-facing-client MSW)
-
-| Code | Result |
-|---|---|
-| `BLJ-good-code` | 200, all detail fields, good statuses only (one with a warning) |
-| `BLJ-good-code-fail-shipment` | 200, minimal details, ends in a bad status |
-| `BLJ-badd-code` | 404 error body |
-
+- Endpoint to resolve `creatorId` → display name. Every creator field is an id, so the admin panel cannot show creator names without it.
+- `GET /api/admin/tracking/:trackingNumber` (admin single-tracking view, full `Status[]` including `creatorId`/`creationTime`). Shape not defined yet.

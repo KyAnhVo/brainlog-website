@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as TrackingIndexRouteImport } from './routes/tracking/index'
-import { Route as TrackingTrackingIdRouteImport } from './routes/tracking/$trackingId'
+import { Route as TrackingTrackingNumberRouteImport } from './routes/tracking/$trackingNumber'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,36 +29,37 @@ const TrackingIndexRoute = TrackingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => TrackingRoute,
 } as any)
-const TrackingTrackingIdRoute = TrackingTrackingIdRouteImport.update({
-  id: '/$trackingId',
-  path: '/$trackingId',
+const TrackingTrackingNumberRoute = TrackingTrackingNumberRouteImport.update({
+  id: '/$trackingNumber',
+  path: '/$trackingNumber',
   getParentRoute: () => TrackingRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/tracking': typeof TrackingRouteWithChildren
-  '/tracking/$trackingId': typeof TrackingTrackingIdRoute
+  '/tracking/$trackingNumber': typeof TrackingTrackingNumberRoute
   '/tracking/': typeof TrackingIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/tracking/$trackingId': typeof TrackingTrackingIdRoute
+  '/tracking/$trackingNumber': typeof TrackingTrackingNumberRoute
   '/tracking': typeof TrackingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/tracking': typeof TrackingRouteWithChildren
-  '/tracking/$trackingId': typeof TrackingTrackingIdRoute
+  '/tracking/$trackingNumber': typeof TrackingTrackingNumberRoute
   '/tracking/': typeof TrackingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/tracking' | '/tracking/$trackingId' | '/tracking/'
+  fullPaths: '/' | '/tracking' | '/tracking/$trackingNumber' | '/tracking/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/tracking/$trackingId' | '/tracking'
-  id: '__root__' | '/' | '/tracking' | '/tracking/$trackingId' | '/tracking/'
+  to: '/' | '/tracking/$trackingNumber' | '/tracking'
+  id:
+    '__root__' | '/' | '/tracking' | '/tracking/$trackingNumber' | '/tracking/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -89,23 +90,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackingIndexRouteImport
       parentRoute: typeof TrackingRoute
     }
-    '/tracking/$trackingId': {
-      id: '/tracking/$trackingId'
-      path: '/$trackingId'
-      fullPath: '/tracking/$trackingId'
-      preLoaderRoute: typeof TrackingTrackingIdRouteImport
+    '/tracking/$trackingNumber': {
+      id: '/tracking/$trackingNumber'
+      path: '/$trackingNumber'
+      fullPath: '/tracking/$trackingNumber'
+      preLoaderRoute: typeof TrackingTrackingNumberRouteImport
       parentRoute: typeof TrackingRoute
     }
   }
 }
 
 interface TrackingRouteChildren {
-  TrackingTrackingIdRoute: typeof TrackingTrackingIdRoute
+  TrackingTrackingNumberRoute: typeof TrackingTrackingNumberRoute
   TrackingIndexRoute: typeof TrackingIndexRoute
 }
 
 const TrackingRouteChildren: TrackingRouteChildren = {
-  TrackingTrackingIdRoute: TrackingTrackingIdRoute,
+  TrackingTrackingNumberRoute: TrackingTrackingNumberRoute,
   TrackingIndexRoute: TrackingIndexRoute,
 }
 

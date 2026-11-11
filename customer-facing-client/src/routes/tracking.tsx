@@ -16,8 +16,8 @@ function RouteComponent() {
   const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     navigate({
-      to: '/tracking/$trackingId',
-      params: { trackingId: trackingNumber },
+      to: '/tracking/$trackingNumber',
+      params: { trackingNumber },
     })
   }
 

@@ -1,63 +1,69 @@
-const POSSIBLE_STATUSES = new Set([
-  'Tracking created', 'Ex-work', 'Customs clearance at POL', 'Arrived at POL', 'Left POL',
-  'Arrived at POT', 'Left POT', 'Arrived at POD', 'Left POD',
-  'Customs clearance at POD', 'Inland trucking to Place of Delivery',
-  'Arrived at Place of Delivery', 'Finished'
-])
+import type { Time } from '@/lib/time'
 
-type TrackingDetails = {
+const GOOD_STATUS_NAMES = [
+  'Tracking created', 'Ex-work', 'Customs clearance at POL', 'Arrived at POL',
+  'Left POL', 'Arrived at POT', 'Left POT', 'Arrived at POD', 'Left POD',
+  'Customs clearance at POD', 'Inland trucking to Place of Delivery',
+  'Arrived at Place of Delivery', 'Finished',
+] as const
+
+type GoodStatusName = typeof GOOD_STATUS_NAMES[number]
+
+const POSSIBLE_STATUSES: ReadonlySet<string> = new Set(GOOD_STATUS_NAMES)
+
+type GoodStatus = {
+  statusType: 'good',
+  status: GoodStatusName,
+  warnings: string[],  // empty array when none, never omitted
+}
+
+type BadStatus = {
+  statusType: 'bad',
+  status: string,  // nonempty
+}
+
+type StatusCustomer = (GoodStatus | BadStatus) & {
+  id: string,
+  occurringTime: Time,
+  location: string,
+}
+
+type Status = StatusCustomer & {
+  creatorId: string,
+  creationTime: Time,
+}
+
+type TrackingBase = {
   trackingNumber: string,
-  contOrSeal?: string,
+  cont?: string,
+  seal?: string,
   pol: string,
   pod: string,
   physicalDetails?: {
-    pieces?: number,
-    weightKg?: number,
-    dimensionsM?: {
-      length: number,
-      width: number,
-      height: number,
+    pcsCount?: number,
+    weightKg: number,
+    dimensions: {
+      lengthCm: number,
+      widthCm: number,
+      heightCm: number,
     },
   },
 }
 
-type StatusEvent = {
-  type: 'good',
-  status: string,
-  occurringTime: Date,
-  location: string,
-  warnings: string[],
-  creationTime: Date,
-  statusCreator: string,
+type Tracking = TrackingBase & {
+  creatorId: string,
+  creationTime: Time,
+  lastStatus: Status,
+  customerId?: string,
 }
 
-type StatusErrorEvent = {
-  type: 'bad',
-  status: string,
-  occurringTime: Date,
-  location: string,
-  creationTime: Date,
-  statusCreator: string,
+// GET /api/admin/tracking
+type TrackingListResponse = {
+  trackings: Tracking[],
+  page: number,
+  pageCount: number,
+  pageSize: number,
 }
 
-type TrackingEvent = StatusEvent | StatusErrorEvent
-
-// At least an id, so the panel can always link to /customer/$customerId.
-type CustomerRef = {
-  id: string,
-  name?: string,
-  email?: string,
-  phone?: string,
-}
-
-type TrackingOverview = TrackingDetails & {
-  trackingCreator: string,
-  trackingCreationTime: Date,
-  latestStatus: TrackingEvent,
-  customer?: CustomerRef,
-}
-
-export {
-  type TrackingDetails, type StatusEvent, type StatusErrorEvent, type TrackingEvent,
-  type CustomerRef, type TrackingOverview, POSSIBLE_STATUSES,
-}
+export { POSSIBLE_STATUSES }
+export type { GoodStatusName, Status, Tracking, TrackingListResponse }

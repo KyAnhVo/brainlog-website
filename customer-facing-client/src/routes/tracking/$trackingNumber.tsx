@@ -11,108 +11,36 @@ import {
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query';
 import { api, isApiError, type ApiError } from '@/lib/api';
+import type { StatusCustomer, TrackingBase, TrackingResponse } from '@/lib/tracking';
 
-export const Route = createFileRoute('/tracking/$trackingId')({
+export const Route = createFileRoute('/tracking/$trackingNumber')({
   component: RouteComponent,
 })
 
-/**
- * A good status event, i.e. normal progress of the shipment:
- * - status (string): the status reached (e.g. customs clearance, arrived at POL, etc.)
- * - occurringTime (Date): when the status was achieved
- * - location (string): where that action happens
- * - warnings (string[]): non-fatal issues (customs adding money, delays, etc.)
- * Creation time and status creator are admin panel only, so they are not sent here.
- */
-interface StatusEvent {
-  type: 'good',
-  status: string,
-  occurringTime: Date,
-  location: string,
-  warnings: string[],
+async function fetchTracking(trackingNumber: string, signal: AbortSignal): Promise<TrackingResponse> {
+  const { data } = await api.get<TrackingResponse>(`/tracking/${trackingNumber}`, { signal });
+  return data;
 }
 
-/**
- * A bad status event, i.e. something went wrong with the cargo
- * (fell off a ship, rejected by customs, etc.):
- * - status (string): what happened
- * - occurringTime, location: same as StatusEvent
- */
-interface StatusErrorEvent {
-  type: 'bad',
-  status: string,
-  occurringTime: Date,
-  location: string,
-}
-
-type TrackingEvent = StatusEvent | StatusErrorEvent;
-
-/** Dates arrive over the wire as ISO-8601 strings. */
-type Wire<T> = { [K in keyof T]: T[K] extends Date ? string : T[K] };
-
-/**
- * This is the details of a shipment. There are:
- * - Tracking number
- * - Cont/Seal number
- * - POL (Port of Loading)
- * - POD (Port of Discharge)
- * - Physical details: pieces count, weight (kg), dimensions (m); each optional
- */
-interface Details {
-  trackingNumber: string,
-  contOrSeal?: string,
-  pol: string,
-  pod: string,
-  physicalDetails?: {
-    pieces?: number,
-    weightKg?: number,
-    dimensionsM?: {
-      length: number,
-      width: number,
-      height: number,
-    },
-  },
-}
-
-interface TrackingResponse {
-  details: Details,
-  statuses: (Wire<StatusEvent> | Wire<StatusErrorEvent>)[],
-}
-
-async function fetchTracking(trackingId: string, signal: AbortSignal): Promise<{ statuses: TrackingEvent[], details: Details }> {
-  const { data } = await api.get<TrackingResponse>(`/tracking/${trackingId}`, { signal });
-
-  const { statuses, details } = data;
-  return {
-    statuses: statuses.map((status) => ({
-      ...status,
-      occurringTime: new Date(status.occurringTime),
-    }) as TrackingEvent),
-    details,
-  };
-}
-
-function formatPhysicalDetails(p: NonNullable<Details['physicalDetails']>): string | null {
+function formatPhysicalDetails(p: NonNullable<TrackingBase['physicalDetails']>): string {
+  const { lengthCm, widthCm, heightCm } = p.dimensions;
   const parts: string[] = [];
-  if (p.pieces != null) parts.push(`${p.pieces} pcs`);
-  if (p.weightKg != null) parts.push(`${p.weightKg} kg`);
-  if (p.dimensionsM != null) {
-    const { length, width, height } = p.dimensionsM;
-    parts.push(`${length} × ${width} × ${height} m`);
-  }
-  return parts.length > 0 ? parts.join(', ') : null;
+  if (p.pcsCount != null) parts.push(`${p.pcsCount} pcs`);
+  parts.push(`${p.weightKg} kg`);
+  parts.push(`${lengthCm} × ${widthCm} × ${heightCm} cm`);
+  return parts.join(', ');
 }
 
-function dotColor(event: TrackingEvent): 'error' | 'warning' | 'primary' {
-  if (event.type === 'bad') return 'error';
+function dotColor(event: StatusCustomer): 'error' | 'warning' | 'primary' {
+  if (event.statusType === 'bad') return 'error';
   return event.warnings.length > 0 ? 'warning' : 'primary';
 }
 
 function RouteComponent() {
-  const { trackingId } = Route.useParams();
+  const { trackingNumber } = Route.useParams();
   const { data, error } = useQuery({
-    queryKey: ['tracking', trackingId],
-    queryFn: ({ signal }) => fetchTracking(encodeURIComponent(trackingId), signal),
+    queryKey: ['tracking', trackingNumber],
+    queryFn: ({ signal }) => fetchTracking(encodeURIComponent(trackingNumber), signal),
     retry: false,
   });
 
@@ -131,7 +59,7 @@ function RouteComponent() {
           err == null ?
             <>
               <Typography component="h1" variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-                Tracking {trackingId}
+                Tracking {trackingNumber}
               </Typography>
               <Card variant="outlined" sx={{ marginBottom: 3 }}>
                 <CardContent>
@@ -144,10 +72,16 @@ function RouteComponent() {
                         <Typography color="text.secondary" sx={{ minWidth: 160, flexShrink: 0 }}><b>Tracking Number:</b></Typography>
                         <Typography>{details.trackingNumber}</Typography>
                       </ListItem>
-                      {details.contOrSeal && (
+                      {details.cont && (
                         <ListItem sx={{ gap: 1 }}>
-                          <Typography color="text.secondary" sx={{ minWidth: 160, flexShrink: 0 }}><b>Cont/Seal Number:</b></Typography>
-                          <Typography>{details.contOrSeal}</Typography>
+                          <Typography color="text.secondary" sx={{ minWidth: 160, flexShrink: 0 }}><b>Container Number:</b></Typography>
+                          <Typography>{details.cont}</Typography>
+                        </ListItem>
+                      )}
+                      {details.seal && (
+                        <ListItem sx={{ gap: 1 }}>
+                          <Typography color="text.secondary" sx={{ minWidth: 160, flexShrink: 0 }}><b>Seal Number:</b></Typography>
+                          <Typography>{details.seal}</Typography>
                         </ListItem>
                       )}
                       <ListItem sx={{ gap: 1 }}>
@@ -170,19 +104,19 @@ function RouteComponent() {
               </Card>
               <Timeline position="right" sx={{ padding: 0 }}>
                 {statuses.map((event, i) => (
-                  <TimelineItem key={i} sx={{ flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <TimelineItem key={event.id} sx={{ flexDirection: { xs: 'column', sm: 'row' } }}>
                     <TimelineOppositeContent
                       color="text.secondary"
                       sx={{ flex: 0.3, textAlign: { xs: 'left', sm: 'right' } }}
                     >
-                      {event.occurringTime.toLocaleString()}
+                      {new Date(event.occurringTime).toLocaleString()}
                     </TimelineOppositeContent>
                     <TimelineSeparator>
                       <TimelineDot color={dotColor(event)} />
                       {i < statuses.length - 1 && <TimelineConnector />}
                     </TimelineSeparator>
                     <TimelineContent>
-                      {event.type === 'bad' ? (
+                      {event.statusType === 'bad' ? (
                         <Typography color="error.main" sx={{ fontWeight: 600 }}>{event.status}</Typography>
                       ) : (
                         <Typography>{event.status}</Typography>
@@ -190,7 +124,7 @@ function RouteComponent() {
                       <Typography variant="body2" color="text.secondary">
                         {event.location}
                       </Typography>
-                      {event.type === 'good' && event.warnings.map((warning, wi) => (
+                      {event.statusType === 'good' && event.warnings.map((warning, wi) => (
                         <Typography key={wi} variant="body2" color="warning.main" sx={{ fontWeight: 600 }}>
                           {warning}
                         </Typography>

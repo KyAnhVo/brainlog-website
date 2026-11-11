@@ -1,71 +1,58 @@
 import { http, HttpResponse } from 'msw'
 import { base } from '@/lib/api'
+import type { TrackingListResponse } from '@/lib/tracking'
+
+const trackingList: TrackingListResponse = {
+  trackings: [
+    {
+      trackingNumber: 'BLJ-good-code',
+      cont: 'MSKU1234567',
+      seal: 'SL998877',
+      pol: 'Hai Phong, VN',
+      pod: 'Singapore, SG',
+      physicalDetails: {
+        pcsCount: 12,
+        weightKg: 840.5,
+        dimensions: { lengthCm: 240, widthCm: 120, heightCm: 150 },
+      },
+      creatorId: 'user-1',
+      creationTime: '2026-10-15T09:11:00.000Z',
+      customerId: 'customer-1',
+      lastStatus: {
+        id: 'status-7',
+        statusType: 'good',
+        status: 'Customs clearance at POD',
+        occurringTime: '2026-10-24T11:45:00.000Z',
+        location: 'Singapore, SG',
+        warnings: ['Delayed by customs inspection'],
+        creatorId: 'user-2',
+        creationTime: '2026-10-24T12:02:13.000Z',
+      },
+    },
+    {
+      trackingNumber: 'BLJ-good-code-fail-shipment',
+      pol: 'Da Nang, VN',
+      pod: 'Busan, KR',
+      creatorId: 'user-1',
+      creationTime: '2026-10-18T03:20:00.000Z',
+      lastStatus: {
+        id: 'status-12',
+        statusType: 'bad',
+        status: 'Cargo rejected by customs',
+        occurringTime: '2026-10-22T07:30:00.000Z',
+        location: 'Busan, KR',
+        creatorId: 'user-3',
+        creationTime: '2026-10-22T08:00:00.000Z',
+      },
+    },
+  ],
+  page: 1,
+  pageCount: 1,
+  pageSize: 20,
+}
 
 export const handlers = [
-  http.get(`${base}/tracking/BLJ-good-code`, () => {
-    return HttpResponse.json({
-      details: {
-        billNumber: 'goodcode',
-        contOrSeal: 'abcd1234',
-        pol: 'SomeRandomPort of Vietnam',
-        pod: 'SomeRandomPort of Singapore'
-      },
-      statuses: [
-        {
-          time: '2026-10-15T09:11:00.000Z',
-          title: 'Package resigered',
-          warnings: [],
-        },
-        {
-          time: '2026-10-15T09:11:30.000Z',
-          title: 'Inland Trucking',
-          location: 'Hanoi, VN',
-          warnings: [],
-        },
-        {
-          time: '2026-10-15T09:14:00.000Z',
-          title: 'Customs Clearance',
-          location: 'Hanoi, VN',
-          warnings: [],
-        },
-        {
-          time: '2026-10-20T09:15:00.000Z',
-          title: 'Arrived at Port of Loading',
-          location: 'Hanoi, VN',
-          warnings: [],
-        },
-        {
-          time: '2026-10-21T14:30:00.000Z',
-          title: 'Left Port of Loading',
-          location: 'Hanoi, VN',
-          warnings: [],
-        },
-        {
-          time: '2026-10-23T08:00:00.000Z',
-          title: 'Arrived at Port of Discharge',
-          location: 'Singapore, Singapore',
-          warnings: [],
-        },
-        {
-          time: '2026-10-24T11:45:00.000Z',
-          title: 'Customs Clearance',
-          location: 'Singapore, Singapore',
-          warnings: ['Delayed by customs inspection'],
-        },
-        {
-          time: '2026-10-24T11:45:00.000Z',
-          title: 'Inland Trucking to Place of Delivery',
-          location: 'Singapore, Singapore',
-          warnings: [],
-        },
-      ]
-    })
-  }),
-
-  http.get(`${base}/tracking/BLJ-badd-code`, () => {
-    return HttpResponse.json(
-      { errorCode: 404, errorMsg: 'No shipment found for this tracking code' },
-      { status: 404 },
-    )
+  http.get(`${base}/admin/tracking`, () => {
+    return HttpResponse.json(trackingList)
   }),
 ]
