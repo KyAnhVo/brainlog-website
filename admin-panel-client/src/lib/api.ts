@@ -15,6 +15,8 @@ function isApiError(e: unknown): e is ApiError {
 const api = axios.create({
   baseURL: base,
   timeout: 10_000,
+  // The session lives in a cookie; send it even if the API is on another origin.
+  withCredentials: true,
 })
 
 // Normalize every failure into an ApiError so callers never see AxiosError, SyntaxError, etc.

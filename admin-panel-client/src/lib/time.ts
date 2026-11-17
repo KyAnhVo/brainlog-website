@@ -11,5 +11,25 @@ function isValidTime(s: string): boolean {
   return !Number.isNaN(t) && new Date(t).toISOString() === s
 }
 
-export { isValidTime }
+// <input type="datetime-local"> works in the viewer's local time ("yyyy-mm-ddThh:mm").
+function toLocalInput(t: Time | undefined): string {
+  if (!t) return ''
+  const d = new Date(t)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Inverse of toLocalInput. Empty or unparsable input gives `undefined`.
+function fromLocalInput(s: string): Time | undefined {
+  if (!s) return undefined
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString()
+}
+
+function formatTime(t: Time): string {
+  return new Date(t).toLocaleString()
+}
+
+export { formatTime, fromLocalInput, isValidTime, toLocalInput }
 export type { Time }

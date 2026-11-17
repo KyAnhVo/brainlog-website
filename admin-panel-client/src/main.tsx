@@ -1,15 +1,33 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from '@/routeTree.gen'
+import { isApiError } from '@/lib/api'
+import { meQueryKey } from '@/lib/auth'
 
 import './index.css'
 import { createTheme, CssBaseline, ThemeProvider } from '@mui/material';
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    // A 401 from any query means the session expired or was revoked: go back to /login.
+    onError: (error) => {
+      if (!isApiError(error) || error.errorCode !== 401) return
+      queryClient.setQueryData(meQueryKey, null)
+      const { pathname, searchStr } = router.state.location
+      if (pathname !== '/login') {
+        router.navigate({ to: '/login', search: { redirect: pathname + searchStr }, replace: true })
+      }
+    },
+  }),
+})
 
-const router = createRouter({ routeTree })
+const router = createRouter({
+  routeTree,
+  context: { queryClient },
+  defaultPreload: 'intent',
+})
 
 // This is what makes Link/navigate fully type-aware across your app:
 declare module '@tanstack/react-router' {
