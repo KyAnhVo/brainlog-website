@@ -88,6 +88,8 @@ type Tracking = TrackingBase & {
 }
 ```
 
+**Note**
+- There must either exist a cont (container), seal, or physical details.
 ## Note on status
 
 A tracking's last status is the status with the greatest occurring time; ties are broken by the greatest creation time.
@@ -187,7 +189,3 @@ type TrackingResponse = {
 
 - Endpoint to resolve `creatorId` → display name. Every creator field is an id, so the admin panel cannot show creator names without it.
 - `GET /api/admin/tracking/:trackingNumber` (admin single-tracking view, full `Status[]` including `creatorId`/`creationTime`). Shape not defined yet.
-
-
-# Random
-In my VisualizeJava project, I have implemented 2 web-centric  parts: A WASM port of my parsing library for it to be suitable on the web, and a visualizer that is completed via React and React Flow for graph generation.

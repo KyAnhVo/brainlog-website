@@ -36,6 +36,7 @@ Login email matching is case-insensitive; the password must match exactly.
 | `POST /api/admin/logout` | — | 200 `{}` |
 | `GET /api/admin/me` | session | 200 `LoginSuccessResponse` · 401 |
 | `GET /api/admin/tracking` | session | 200 `TrackingListResponse` · 400 · 401 |
+| `POST /api/admin/tracking` | session | 200 `AdminTrackingResponse` · 400 · 401 |
 | `GET /api/admin/tracking/:trackingNumber` | session | 200 `AdminTrackingResponse` · 401 · 404 |
 | `POST /api/admin/tracking/:trackingNumber/status` | session | 200 `Status` · 400 · 401 · 404 |
 | `GET /api/admin/account/:id` | session | 200 `AccountPublic` · 401 · 404 |
@@ -60,6 +61,7 @@ Login email matching is case-insensitive; the password must match exactly.
 | Multiple warnings | `BLJ-2026-0011` |
 | Unknown creator | `BLJ-2026-0006` |
 | 404 detail | open `/tracking/does-not-exist` |
+| Create a tracking | *New tracking* on the list → random `BLJ-XXXX-XXXX`, first status at the POL (kept until reload) |
 | 409 on create | create an account with `ops@brainlog.test` |
 | 500 on create | create an account whose email starts with `error500@` |
 | 404 on delete | delete `ghost@brainlog.test` |

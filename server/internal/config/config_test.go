@@ -15,7 +15,7 @@ func writeFile(t *testing.T, dir, name, content string) {
 
 // clearEnv unsets every variable Load reads, restoring them after the test.
 func clearEnv(t *testing.T) {
-	for _, k := range []string{"APP_ENV", "ADDR", "DB_ADDR", "STORE", "COOKIE_SECURE", "SEED_MOCK_DATA", "LOG_LEVEL"} {
+	for _, k := range []string{"APP_ENV", "ADDR", "PORT", "DB_ADDR", "STORE", "COOKIE_SECURE", "SEED_MOCK_DATA", "LOG_LEVEL"} {
 		t.Setenv(k, "") // registers restore
 		os.Unsetenv(k)
 	}
@@ -86,5 +86,29 @@ func TestInvalid(t *testing.T) {
 				t.Fatal("expected an error")
 			}
 		})
+	}
+}
+
+func TestPort(t *testing.T) {
+	for _, tc := range []struct{ addr, port, want string }{
+		{"", "", ":8080"},
+		{"", "10000", ":10000"},                       // Render
+		{"127.0.0.1:9000", "10000", "127.0.0.1:9000"}, // explicit ADDR wins
+	} {
+		clearEnv(t)
+		t.Chdir(t.TempDir())
+		if tc.addr != "" {
+			t.Setenv("ADDR", tc.addr)
+		}
+		if tc.port != "" {
+			t.Setenv("PORT", tc.port)
+		}
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.Addr != tc.want {
+			t.Errorf("ADDR=%q PORT=%q -> %q, want %q", tc.addr, tc.port, c.Addr, tc.want)
+		}
 	}
 }

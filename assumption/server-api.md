@@ -10,13 +10,12 @@ The server implements every endpoint the admin client uses, including the ones m
 | `GET /api/tracking/{trackingNumber}` | public |
 | `POST /api/admin/login`, `POST /api/admin/logout` | none |
 | `GET /api/admin/me` | session |
-| `GET /api/admin/tracking`, `GET /api/admin/tracking/{n}`, `POST /api/admin/tracking/{n}/status` | session (any role) |
+| `GET /api/admin/tracking`, `POST /api/admin/tracking`, `GET /api/admin/tracking/{n}`, `POST /api/admin/tracking/{n}/status` | session (any role) |
 | `GET /api/admin/account/{id}` | session (any role) |
 | `POST /api/admin/createAccount`, `POST /api/admin/deleteAccount` | admin, otherwise **401** as the spec says |
 
 - **Any role may add statuses and view all trackings.** The spec restricts only `/accounts` to admins.
-- **No endpoint creates trackings.** No client page needs one and the spec does not define one. Trackings come
-  from the seed for now.
+- **Tracking creation** is `POST /api/admin/tracking`; see [tracking-create.md](tracking-create.md).
 - **Customer 404 message:** "No shipment found for this tracking code", the same text as the customer mock.
 - Unknown `/api/...` paths return a JSON `ApiError` 404, so clients always get an `ApiError`. A wrong
   method on a known path gets Go's default plain-text 405.

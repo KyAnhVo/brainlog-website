@@ -36,3 +36,21 @@ func TestSessionIDRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestNewTrackingNumber(t *testing.T) {
+	if len(trackingAlphabet) != 32 {
+		t.Fatalf("alphabet has %d symbols; must be 32 for an unbiased b&31", len(trackingAlphabet))
+	}
+	shape := regexp.MustCompile(`^BLJ-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$`)
+	seen := map[string]bool{}
+	for range 1000 {
+		n := NewTrackingNumber()
+		if !shape.MatchString(n) {
+			t.Fatalf("bad shape: %s", n)
+		}
+		if seen[n] {
+			t.Fatalf("duplicate in 1000 draws: %s", n)
+		}
+		seen[n] = true
+	}
+}

@@ -1,0 +1,27 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# One Docker web service: the Go API with both frontends embedded (see Dockerfile).
+#   /  customer site    /admin/  admin panel    /api/...  API    /healthz  health check
+services:
+  - type: web
+    name: brainlog
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Same AWS region as the Neon database (ap-southeast-1). Cannot be changed after creation.
+    region: singapore
+    # "free" sleeps after 15 min idle (~1 min cold start) and has 0.1 CPU, which makes the
+    # Argon2id login hash slow. Switch to a paid plan for real use.
+    plan: free
+    healthCheckPath: /healthz
+    # Deploy a commit only after GitHub checks (the CI workflow) pass on it.
+    autoDeployTrigger: checksPass
+    envVars:
+      # PostgreSQL URL. Entered in the Render dashboard when the Blueprint is first
+      # created; never committed. Migrations run automatically on startup.
+      - key: DB_ADDR
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: LOG_LEVEL
+        value: info
+      # Do NOT set ADDR here: the server listens on Render's $PORT when ADDR is unset.

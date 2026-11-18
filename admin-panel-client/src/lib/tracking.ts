@@ -115,9 +115,15 @@ type StatusCreate = (GoodStatus | BadStatus) & {
   location: string,
 }
 
+// ASSUMED (unspecified): POST /api/admin/tracking, any logged-in role.
+// The server generates trackingNumber (random, e.g. BLJ-7K3M-Q9TX) and the first status
+// ("Tracking created", now, at the POL). customerId is not accepted yet.
+// Responds with AdminTrackingResponse for the new tracking.
+type TrackingCreate = Omit<TrackingBase, 'trackingNumber'>
+
 export { GOOD_STATUS_NAMES, PAGE_SIZES, POSSIBLE_STATUSES, SORT_FIELDS, defaultSortDirection }
 export type {
   AdminTrackingResponse, BadStatus, GoodStatus, GoodStatusName, PageSize, SortDirection, SortField,
-  Status, StatusCreate, StatusCustomer, Tracking, TrackingBase, TrackingDetails, TrackingListQuery,
-  TrackingListResponse,
+  Status, StatusCreate, StatusCustomer, Tracking, TrackingBase, TrackingCreate, TrackingDetails,
+  TrackingListQuery, TrackingListResponse,
 }

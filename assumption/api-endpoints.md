@@ -28,6 +28,7 @@ These are now implemented by the Go server in `server/` exactly as described her
 | `POST /api/admin/deleteAccount` | Body `{ email } \| { id }`; 200 `{}` / 401 / 404 | The spec gives the body and responses but no path. It is named to match `createAccount`. Uses POST rather than DELETE because the spec sends a body. |
 | `GET /api/admin/tracking/:trackingNumber` | `{ details: Omit<Tracking,'lastStatus'>, statuses: Status[] }` | Listed as TODO in `api-shape.md`. Mirrors the customer `TrackingResponse`, but with admin fields (`creatorId`, `creationTime`, `customerId`) and full `Status` (with `creatorId`/`creationTime`). Ordering is the same as the customer endpoint. |
 | `POST /api/admin/tracking/:trackingNumber/status` | Body `StatusCreate = (GoodStatus \| BadStatus) & { occurringTime, location }`; 200 created `Status` | Needed for the "status updating section". The server assigns `id`, `creatorId` (from the session) and `creationTime`. 400 if `occurringTime` is in the future (5-minute buffer, same as the list endpoint) or the status is invalid. |
+| `POST /api/admin/tracking` | Body `Omit<TrackingBase,'trackingNumber'>`; 200 `AdminTrackingResponse` | `/tracking/new` page. The server generates the number and the first status. See [tracking-create.md](tracking-create.md). |
 | `GET /api/admin/account/:id` | 200 `{ id, name }` / 404 | Listed as TODO ("creatorId → display name"). One request per id, cached forever on the client. A batch endpoint would be better if lists ever show creator names. |
 
 ## Success bodies

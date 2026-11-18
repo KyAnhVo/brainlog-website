@@ -20,8 +20,10 @@ const (
 type Config struct {
 	// Which .env.<AppEnv> file to load, e.g. "production" -> .env.production.
 	AppEnv string `env:"APP_ENV" envDefault:"development"`
-	// Address to listen on.
-	Addr string `env:"ADDR" envDefault:":8080"`
+	// Address to listen on. If unset: ":$PORT" when PORT is set (Render and similar
+	// platforms inject PORT), otherwise ":8080".
+	Addr string `env:"ADDR"`
+	Port string `env:"PORT"`
 	// PostgreSQL connection URL, e.g. postgresql://user:pass@host/db?sslmode=require.
 	// Never log this: it contains the password.
 	DBAddr string `env:"DB_ADDR"`
@@ -57,6 +59,13 @@ func Load() (Config, error) {
 	var c Config
 	if err := env.Parse(&c); err != nil {
 		return Config{}, err
+	}
+
+	if c.Addr == "" {
+		c.Addr = ":8080"
+		if c.Port != "" {
+			c.Addr = ":" + c.Port
+		}
 	}
 
 	switch c.Store {

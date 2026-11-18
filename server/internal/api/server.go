@@ -62,6 +62,7 @@ func New(cfg Config) http.Handler {
 
 	// Admin trackings.
 	mux.Handle("GET /api/admin/tracking", s.requireSession(s.handleListTrackings))
+	mux.Handle("POST /api/admin/tracking", s.requireSession(s.handleCreateTracking))
 	mux.Handle("GET /api/admin/tracking/{trackingNumber}", s.requireSession(s.handleAdminTracking))
 	mux.Handle("POST /api/admin/tracking/{trackingNumber}/status", s.requireSession(s.handleAddStatus))
 

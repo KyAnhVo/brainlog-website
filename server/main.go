@@ -48,14 +48,21 @@ func openStore(ctx context.Context, cfg config.Config) (store.Store, func(), err
 
 // routes splits the single host into three areas:
 //
+//	/healthz    liveness check (200 "ok")
 //	/api/...    the JSON API (customer: /api/tracking/..., admin: /api/admin/...)
 //	/admin/...  the admin panel SPA ("/admin" redirects to "/admin/")
 //	/...        the customer SPA
-func routes(apiHandler http.Handler) http.Handler {
+func routes(apiHandler, adminSPA, customerSPA http.Handler) http.Handler {
 	mux := http.NewServeMux()
+	// Liveness for the platform's health checks. Deliberately does not touch the database:
+	// a slow Neon wake-up must not get healthy instances restarted.
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write([]byte("ok\n"))
+	})
 	mux.Handle("/api/", apiHandler)
-	mux.Handle("/admin/", http.StripPrefix("/admin", web.Admin()))
-	mux.Handle("/", web.Customer())
+	mux.Handle("/admin/", http.StripPrefix("/admin", adminSPA))
+	mux.Handle("/", customerSPA)
 	return mux
 }
 
@@ -94,8 +101,12 @@ func run() error {
 	}
 
 	srv := &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           routes(api.New(api.Config{Store: st, CookieSecure: cfg.CookieSecure, Logger: log})),
+		Addr: cfg.Addr,
+		Handler: routes(
+			api.New(api.Config{Store: st, CookieSecure: cfg.CookieSecure, Logger: log}),
+			web.Admin(),
+			web.Customer(),
+		),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

@@ -29,4 +29,4 @@
   blank location is useless on the customer timeline.
 - After a successful add, the detail query and all list queries are invalidated, so the timeline and
   last-status chips refresh.
-- **Creating trackings** is not part of the listed admin pages and is not built.
+- **Creating trackings:** see [tracking-create.md](tracking-create.md).

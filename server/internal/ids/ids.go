@@ -59,3 +59,18 @@ func ParseSessionID(s string) (id SessionID, ok bool) {
 	}
 	return id, true
 }
+
+// Tracking numbers are public lookup keys (GET /api/tracking/:n needs no login), so they
+// must be unguessable. 32 symbols, no look-alikes (no 0/O, 1/I): 8 random symbols = 40 bits.
+const trackingAlphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
+// NewTrackingNumber returns a random number like "BLJ-7K3M-Q9TX".
+func NewTrackingNumber() string {
+	var r [8]byte
+	_, _ = rand.Read(r[:])
+	var sym [8]byte
+	for i, b := range r {
+		sym[i] = trackingAlphabet[b&31] // 32 divides 256: uniform
+	}
+	return "BLJ-" + string(sym[:4]) + "-" + string(sym[4:])
+}

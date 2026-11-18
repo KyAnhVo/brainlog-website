@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedAccountsRouteImport } from './routes/_authed/accounts'
 import { Route as AuthedTrackingIndexRouteImport } from './routes/_authed/tracking/index'
 import { Route as AuthedTrackingTrackingNumberRouteImport } from './routes/_authed/tracking/$trackingNumber'
+import { Route as AuthedTrackingNewRouteImport } from './routes/_authed/tracking/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,12 +47,18 @@ const AuthedTrackingTrackingNumberRoute =
     path: '/tracking/$trackingNumber',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedTrackingNewRoute = AuthedTrackingNewRouteImport.update({
+  id: '/tracking/new',
+  path: '/tracking/new',
+  getParentRoute: () => AuthedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/accounts': typeof AuthedAccountsRoute
   '/tracking/$trackingNumber': typeof AuthedTrackingTrackingNumberRoute
+  '/tracking/new': typeof AuthedTrackingNewRoute
   '/tracking/': typeof AuthedTrackingIndexRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/accounts': typeof AuthedAccountsRoute
   '/tracking/$trackingNumber': typeof AuthedTrackingTrackingNumberRoute
+  '/tracking/new': typeof AuthedTrackingNewRoute
   '/tracking': typeof AuthedTrackingIndexRoute
 }
 export interface FileRoutesById {
@@ -68,14 +76,26 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authed/accounts': typeof AuthedAccountsRoute
   '/_authed/tracking/$trackingNumber': typeof AuthedTrackingTrackingNumberRoute
+  '/_authed/tracking/new': typeof AuthedTrackingNewRoute
   '/_authed/tracking/': typeof AuthedTrackingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/login' | '/accounts' | '/tracking/$trackingNumber' | '/tracking/'
+    | '/'
+    | '/login'
+    | '/accounts'
+    | '/tracking/$trackingNumber'
+    | '/tracking/new'
+    | '/tracking/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/accounts' | '/tracking/$trackingNumber' | '/tracking'
+  to:
+    | '/'
+    | '/login'
+    | '/accounts'
+    | '/tracking/$trackingNumber'
+    | '/tracking/new'
+    | '/tracking'
   id:
     | '__root__'
     | '/'
@@ -83,6 +103,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authed/accounts'
     | '/_authed/tracking/$trackingNumber'
+    | '/_authed/tracking/new'
     | '/_authed/tracking/'
   fileRoutesById: FileRoutesById
 }
@@ -136,18 +157,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedTrackingTrackingNumberRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/tracking/new': {
+      id: '/_authed/tracking/new'
+      path: '/tracking/new'
+      fullPath: '/tracking/new'
+      preLoaderRoute: typeof AuthedTrackingNewRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
 interface AuthedRouteChildren {
   AuthedAccountsRoute: typeof AuthedAccountsRoute
   AuthedTrackingTrackingNumberRoute: typeof AuthedTrackingTrackingNumberRoute
+  AuthedTrackingNewRoute: typeof AuthedTrackingNewRoute
   AuthedTrackingIndexRoute: typeof AuthedTrackingIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAccountsRoute: AuthedAccountsRoute,
   AuthedTrackingTrackingNumberRoute: AuthedTrackingTrackingNumberRoute,
+  AuthedTrackingNewRoute: AuthedTrackingNewRoute,
   AuthedTrackingIndexRoute: AuthedTrackingIndexRoute,
 }
 

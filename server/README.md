@@ -29,6 +29,17 @@ Or use the container (repo root): `docker build -t brainlog .`, then
 - A plain `go build` (without the script) still compiles. The frontends then answer 503
   "frontend not built", while the API works normally.
 
+### Render
+
+`render.yaml` (repo root) is a Render Blueprint for one Docker web service in `singapore`, the same AWS
+region as the Neon database. In the Render dashboard, choose **New → Blueprint**, pick the GitHub repo, and paste
+the `DB_ADDR` value when prompted.
+
+- Render injects `PORT`. The server listens on it when `ADDR` is unset, so **don't set `ADDR` on Render**.
+- Render terminates HTTPS; keep `COOKIE_SECURE=true`. Health check: `GET /healthz`.
+- `autoDeployTrigger: checksPass`: a push to master deploys only after CI passes.
+- Migrations run on startup. Nothing else needs to run before a deploy.
+
 ## Developing the frontends against this server
 
 By default both Vite dev servers use MSW mocks. To use the real server instead:
@@ -60,7 +71,8 @@ APP_ENV=production go run .
 | Env var | Default | Meaning |
 |---|---|---|
 | `APP_ENV` | `development` | Which `.env.<APP_ENV>` file to load |
-| `ADDR` | `:8080` | Listen address |
+| `ADDR` | `:$PORT`, else `:8080` | Listen address. Leave unset on Render (it sets `PORT`). |
+| `PORT` | — | Set by Render and similar platforms; used when `ADDR` is unset |
 | `DB_ADDR` | — | PostgreSQL URL, e.g. `postgresql://user:pass@host/db?sslmode=require`. Never logged. |
 | `STORE` | auto | `postgres` if `DB_ADDR` is set, otherwise `memory`. Set it to force one. |
 | `COOKIE_SECURE` | `true` | `Secure` flag on the session cookie; must be `false` over plain HTTP |

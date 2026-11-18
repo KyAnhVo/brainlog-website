@@ -4,7 +4,7 @@ import type { AccountCreate, AccountPublic, Login, LoginSuccessResponse } from '
 import { isValidTime, type Time } from '@/lib/time'
 import {
   PAGE_SIZES, POSSIBLE_STATUSES, SORT_FIELDS, defaultSortDirection,
-  type AdminTrackingResponse, type GoodStatusName, type SortDirection, type SortField, type Status, type StatusCreate, type Tracking,
+  type AdminTrackingResponse, type GoodStatusName, type TrackingCreate, type TrackingDetails, type SortDirection, type SortField, type Status, type StatusCreate, type Tracking,
   type TrackingListResponse,
 } from '@/lib/tracking'
 import { accounts, sortStatuses, trackings, type MockAccount, type MockTracking } from './data'
@@ -209,6 +209,52 @@ function validateStatusCreate(body: unknown): StatusCreate | string {
 let createdStatusSeq = 0
 
 // ---------------------------------------------------------------------------
+// Tracking creation (mirrors server/internal/api/trackingcreate.go)
+// ---------------------------------------------------------------------------
+const TRACKING_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+
+function newTrackingNumber(): string {
+  const r = crypto.getRandomValues(new Uint8Array(8))
+  const sym = Array.from(r, (b) => TRACKING_ALPHABET[b & 31]).join('')
+  return `BLJ-${sym.slice(0, 4)}-${sym.slice(4)}`
+}
+
+const positive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1e9
+
+function validateTrackingCreate(body: unknown): TrackingCreate | string {
+  if (typeof body !== 'object' || body === null) return 'Body must be a JSON object'
+  const b = body as Record<string, unknown>
+  for (const k of Object.keys(b)) {
+    if (!['cont', 'seal', 'pol', 'pod', 'physicalDetails'].includes(k)) return `Unknown field ${k}`
+  }
+  const text = (v: unknown) => (typeof v === 'string' ? v.trim() : undefined)
+  const pol = text(b.pol)
+  const pod = text(b.pod)
+  if (!pol) return 'pol must not be empty'
+  if (!pod) return 'pod must not be empty'
+  const out: TrackingCreate = { pol, pod }
+  if (text(b.cont)) out.cont = text(b.cont)
+  if (text(b.seal)) out.seal = text(b.seal)
+  if (b.physicalDetails != null) {
+    const p = b.physicalDetails as Record<string, unknown>
+    const d = (p.dimensions ?? {}) as Record<string, unknown>
+    if (!positive(p.weightKg)) return 'physicalDetails.weightKg must be a positive number'
+    if (!positive(d.lengthCm) || !positive(d.widthCm) || !positive(d.heightCm)) {
+      return 'physicalDetails.dimensions needs positive lengthCm, widthCm and heightCm'
+    }
+    if (p.pcsCount != null && !(Number.isInteger(p.pcsCount) && (p.pcsCount as number) >= 1)) {
+      return 'physicalDetails.pcsCount must be a positive integer'
+    }
+    out.physicalDetails = {
+      weightKg: p.weightKg as number,
+      dimensions: { lengthCm: d.lengthCm as number, widthCm: d.widthCm as number, heightCm: d.heightCm as number },
+      ...(p.pcsCount != null ? { pcsCount: p.pcsCount as number } : {}),
+    }
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
 // Accounts
 // ---------------------------------------------------------------------------
 function validateAccountCreate(body: unknown): AccountCreate | string {
@@ -263,6 +309,23 @@ export const handlers = [
     if (typeof q === 'string') return apiError(400, q)
     const res = listTrackings(q)
     if (typeof res === 'string') return apiError(400, res)
+    return HttpResponse.json(res)
+  }),
+
+  http.post(`${base}/admin/tracking`, async ({ request }) => {
+    await delay(LATENCY_MS)
+    const me = getSessionAccount()
+    if (!me) return unauthorized()
+    const input = validateTrackingCreate(await request.json().catch(() => null))
+    if (typeof input === 'string') return apiError(400, input)
+    const now = new Date().toISOString()
+    const details: TrackingDetails = { ...input, trackingNumber: newTrackingNumber(), creatorId: me.id, creationTime: now }
+    const first: Status = {
+      id: `status-new-${++createdStatusSeq}`, statusType: 'good', status: 'Tracking created', warnings: [],
+      occurringTime: now, location: input.pol, creatorId: me.id, creationTime: now,
+    }
+    db.trackings.push({ details, statuses: [first] })
+    const res: AdminTrackingResponse = { details, statuses: [first] }
     return HttpResponse.json(res)
   }),
 

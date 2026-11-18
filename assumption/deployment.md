@@ -36,3 +36,21 @@ Consequences:
 - **The Go version in the Dockerfile** is `golang:1.27`, matching `go.mod` (`go 1.27.3`).
 - **Dev:** mocks remain the default. `VITE_USE_MOCKS=false` switches a client to the real server through Vite's
   `/api` proxy (`localhost:8080`).
+
+## Render
+
+- **Host:** Render, one Docker web service from `render.yaml`. The region is `singapore` because the Neon
+  database is in AWS `ap-southeast-1`, and a cross-region hop would add latency to every query.
+- **Port:** the server listens on Render's `PORT` (default 10000) when `ADDR` is unset. Render only "usually"
+  detects other ports, so this doesn't rely on detection. `ADDR` still overrides it, e.g. for local runs.
+- **`/healthz`** is a liveness check that does not query the database. Render restarts an instance after
+  60 s of failed checks, and a Neon cold start must not cause that. A broken database still shows up as
+  startup failure: migrations run at boot, so a deploy that can't reach the database never becomes healthy and
+  Render keeps the old version running.
+- **`plan: free`** for now. It sleeps after 15 minutes idle (about 1 minute to wake), has 0.1 CPU (Argon2id
+  login hashing takes noticeably longer), 750 instance-hours/month per workspace, and can be restarted at
+  any time. Use a paid plan for real customers.
+- **`autoDeployTrigger: checksPass`** ties deploys to the existing CI workflow (`ci-ok`).
+- **`DB_ADDR` is `sync: false`:** Render asks for it once when the Blueprint is created. Later Blueprint syncs
+  ignore it, so change it in the dashboard. The Docker build never references it (Render passes env vars as
+  build args).

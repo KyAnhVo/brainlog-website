@@ -1,5 +1,6 @@
-import { Box, Card, CardContent, CardHeader, Divider, LinearProgress, Typography } from '@mui/material';
-import { createFileRoute } from '@tanstack/react-router'
+import { Box, Button, Card, CardContent, CardHeader, Divider, LinearProgress, Typography } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import logo from '@/assets/logo.png';
@@ -112,6 +113,17 @@ function RouteComponent() {
             >
               Trackings
             </Typography>
+          }
+          action={
+            <Button
+              component={Link}
+              to="/tracking/new"
+              variant="contained"
+              startIcon={<AddIcon />}
+              sx={{ mt: 2, mr: 1 }}
+            >
+              New tracking
+            </Button>
           }
           avatar={
             <Box component="img" src={logo} sx={{

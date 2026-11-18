@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -415,4 +416,89 @@ func TestAccounts(t *testing.T) {
 	}
 	expect(t, e.do(admin, "GET", "/api/admin/me", nil), 401)
 	expect(t, e.do(e.browser(), "POST", "/api/admin/login", map[string]string{"email": "admin@brainlog.test", "password": "Admin123!"}), 401)
+}
+
+func TestCreateTracking(t *testing.T) {
+	e := newEnv(t)
+	anon := e.browser()
+	c := e.login("staff@brainlog.test", "Staff123!") // any role may create
+
+	full := map[string]any{
+		"cont": " MSKU7654321 ", "seal": "SL1", "pol": " Hải Phòng, VN ", "pod": "Busan, KR",
+		"physicalDetails": map[string]any{
+			"pcsCount": 3, "weightKg": 12.5,
+			"dimensions": map[string]any{"lengthCm": 100, "widthCm": 80.5, "heightCm": 60},
+		},
+	}
+	expect(t, e.do(anon, "POST", "/api/admin/tracking", full), 401)
+
+	r := e.do(c, "POST", "/api/admin/tracking", full)
+	expect(t, r, 200)
+	d := r.body["details"].(map[string]any)
+	number := d["trackingNumber"].(string)
+	if !regexp.MustCompile(`^BLJ-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$`).MatchString(number) {
+		t.Fatalf("tracking number %q", number)
+	}
+	if d["cont"] != "MSKU7654321" || d["pol"] != "Hải Phòng, VN" || d["creatorId"] != seed.Binh ||
+		d["creationTime"] != "2026-11-17T00:00:00.000Z" {
+		t.Fatalf("details = %v", d)
+	}
+	if _, ok := d["customerId"]; ok {
+		t.Fatal("customerId should be absent")
+	}
+	if p := d["physicalDetails"].(map[string]any); p["pcsCount"] != 3.0 || p["weightKg"] != 12.5 {
+		t.Fatalf("physicalDetails = %v", p)
+	}
+	st := r.body["statuses"].([]any)
+	first := st[0].(map[string]any)
+	if len(st) != 1 || first["status"] != "Tracking created" || first["statusType"] != "good" ||
+		first["location"] != "Hải Phòng, VN" || first["occurringTime"] != "2026-11-17T00:00:00.000Z" ||
+		first["creatorId"] != seed.Binh || len(first["warnings"].([]any)) != 0 {
+		t.Fatalf("first status = %v", first)
+	}
+
+	// Visible to the public customer endpoint and at the top of the admin list.
+	expect(t, e.do(anon, "GET", "/api/tracking/"+number, nil), 200)
+	if top := trackingNumbers(e.do(c, "GET", "/api/admin/tracking", nil))[0]; top != number {
+		t.Fatalf("list starts with %s, want the new %s", top, number)
+	}
+
+	// Minimal body: blank cont/seal become absent; no physical details.
+	r = e.do(c, "POST", "/api/admin/tracking", map[string]any{"cont": "  ", "pol": "A", "pod": "B"})
+	expect(t, r, 200)
+	d = r.body["details"].(map[string]any)
+	for _, absent := range []string{"cont", "seal", "physicalDetails"} {
+		if _, ok := d[absent]; ok {
+			t.Errorf("minimal: %s should be absent: %v", absent, d)
+		}
+	}
+	if d["trackingNumber"] == number {
+		t.Fatal("tracking numbers must differ")
+	}
+
+	dims := func(l, w, h any) map[string]any { return map[string]any{"lengthCm": l, "widthCm": w, "heightCm": h} }
+	bad := []any{
+		map[string]any{"pol": "", "pod": "B"},
+		map[string]any{"pol": "A", "pod": "  "},
+		map[string]any{"pol": "A"},
+		map[string]any{"pol": strings.Repeat("x", 201), "pod": "B"},
+		map[string]any{"pol": "A", "pod": "B", "cont": strings.Repeat("x", 101)},
+		map[string]any{"pol": "A", "pod": "B", "trackingNumber": "BLJ-MINE-0001"}, // server picks it
+		map[string]any{"pol": "A", "pod": "B", "customerId": "c1"},                // not accepted
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"dimensions": dims(1, 1, 1)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"weightKg": 0, "dimensions": dims(1, 1, 1)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"weightKg": -1, "dimensions": dims(1, 1, 1)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"weightKg": 1}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"weightKg": 1, "dimensions": dims(1, 1, nil)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"weightKg": 1, "dimensions": dims(1, 0, 1)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"weightKg": 1e10, "dimensions": dims(1, 1, 1)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"pcsCount": 0, "weightKg": 1, "dimensions": dims(1, 1, 1)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"pcsCount": 1.5, "weightKg": 1, "dimensions": dims(1, 1, 1)}},
+		map[string]any{"pol": "A", "pod": "B", "physicalDetails": map[string]any{"weightKg": "12", "dimensions": dims(1, 1, 1)}},
+	}
+	for i, b := range bad {
+		if r := e.do(c, "POST", "/api/admin/tracking", b); r.status != 400 {
+			t.Errorf("bad[%d] -> %d %s", i, r.status, r.raw)
+		}
+	}
 }
