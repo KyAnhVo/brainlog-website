@@ -1,0 +1,9 @@
+# Env files hold secrets (DB_ADDR contains the database password). Only the example is committed.
+.env
+.env.*
+!.env.example
+/server
+# Built frontends copied in by scripts/build.sh or the Dockerfile; only the placeholders are committed.
+/internal/web/dist/*/*
+!/internal/web/dist/*/.gitkeep
+/bin/

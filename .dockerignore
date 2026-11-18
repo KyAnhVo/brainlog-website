@@ -1,0 +1,16 @@
+# Keep secrets and local artifacts out of the build context.
+.git
+.github
+.obsidian
+**/node_modules
+**/dist
+server/bin
+server/internal/web/dist/*/*
+!server/internal/web/dist/*/.gitkeep
+# Server env files hold the database password. (The clients' .env.production is needed by the build.)
+server/.env
+server/.env.*
+!server/.env.example
+requirements
+assumption
+devnote

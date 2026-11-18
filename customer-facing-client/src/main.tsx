@@ -40,10 +40,15 @@ const theme = createTheme(
   }
 )
 
+// Dev uses MSW mocks unless VITE_USE_MOCKS=false (then /api is proxied to the Go server).
+// Production builds never include the mocks.
 async function enableMocking() {
-  if (!import.meta.env.DEV) return
+  if (!import.meta.env.DEV || import.meta.env.VITE_USE_MOCKS === 'false') return
   const { worker } = await import('./mocks/browser')
-  return worker.start({ onUnhandledFrame: 'warn' })
+  return worker.start({
+    onUnhandledFrame: 'warn',
+    serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
+  })
 }
 
 enableMocking().then(() => {

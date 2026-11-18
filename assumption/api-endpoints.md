@@ -18,6 +18,9 @@ data under `/api/admin/...`. **Assumed:** the auth endpoints are under the same 
 
 ## ASSUMED API (not in the requirements)
 
+These are now implemented by the Go server in `server/` exactly as described here
+(see [server-api.md](server-api.md)). They are still assumptions until the requirements adopt them.
+
 | Endpoint | Shape | Why |
 |---|---|---|
 | `GET /api/admin/me` | 200 `LoginSuccessResponse` / 401 | The session cookie should be HttpOnly, so JS cannot read it. The client needs a way to ask "am I logged in, and what is my role?" after a reload. |
